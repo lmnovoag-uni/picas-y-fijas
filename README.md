@@ -24,8 +24,7 @@ flask --app app run --port 5000
 ```
 
 ## Desplegar en Killercoda
-1. Sube el repo a GitHub y cambia la URL en `killercoda/deployment.yaml` (`TU_USUARIO/TU_REPO`).
-2. En el Playground de Kubernetes:
+1. En el Playground de Kubernetes:
 ```bash
 git clone https://github.com/TU_USUARIO/TU_REPO.git && cd TU_REPO
 kubectl apply -f killercoda/namespace.yaml
