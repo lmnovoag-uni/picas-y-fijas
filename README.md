@@ -26,7 +26,7 @@ flask --app app run --port 5000
 ## Desplegar en Killercoda
 1. En el Playground de Kubernetes:
 ```bash
-git clone https://github.com/TU_USUARIO/TU_REPO.git && cd TU_REPO
+git clone https://github.com/lmnovoag-uni/picas-y-fijas.git && cd picas-y-fijas
 kubectl apply -f killercoda/namespace.yaml
 kubectl -n picas-y-fijas create secret generic picas-auth --from-literal=signing-key="$(openssl rand -hex 32)"
 kubectl apply -f killercoda/deployment.yaml -f killercoda/service.yaml
