@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Picas y Fijas</title>
+<style>
+  body{font-family:sans-serif;max-width:640px;margin:20px auto;padding:0 12px}
+  input{padding:6px;width:110px} button{padding:6px 10px;cursor:pointer}
+  li{margin:6px 0} #msg{color:#c0392b;min-height:1.3em}
+  .caja{border:1px solid #ccc;border-radius:6px;padding:10px;margin:12px 0}
+</style>
+</head>
+<body>
+<h1>Picas y Fijas</h1>
+<p id="msg"></p>
+
+<div id="vLogin" class="caja">
+  <input id="nombre" placeholder="Tu nombre" maxlength="20">
+  <button onclick="intentar(entrar)">Entrar</button>
+</div>
+
+<div id="vApp" hidden>
+  <p>Jugador: <b id="yo"></b></p>
+  <div class="caja">
+    Tu número secreto: <input id="secreto" maxlength="4" placeholder="4 dígitos">
+    <button onclick="intentar(crear)">Crear juego</button>
+    <small>(o escríbelo y pulsa «Unirse» en un juego)</small>
+  </div>
+  <h3>Juegos</h3>
+  <ul id="lista"></ul>
+  <div id="panel" class="caja" hidden>
+    <div id="estado"></div>
+    <div id="turnoBox" hidden>
+      <input id="intento" maxlength="4" placeholder="Tu intento">
+      <button onclick="intentar(jugar)">Jugar</button>
+    </div>
+    <ul id="jugadas"></ul>
+  </div>
+</div>
+
+<script>
+let token = "", yo = "", actual = "";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => "&#" + c.charCodeAt(0) + ";");
+
+async function api(metodo, url, datos) {
+  const r = await fetch(url, {
+    method: metodo,
+    headers: {"Content-Type": "application/json", Authorization: "Bearer " + token},
+    body: datos ? JSON.stringify(datos) : undefined
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error);
+  return d;
+}
+async function intentar(f) {
+  try { await f(); $("msg").textContent = ""; }
+  catch (e) { $("msg").textContent = e.message; }
+}
+
+async function entrar() {
+  const d = await api("POST", "/login", {nombre: $("nombre").value});
+  token = d.token; yo = d.nombre;
+  $("yo").textContent = yo;
+  $("vLogin").hidden = true; $("vApp").hidden = false;
+  refrescar();
+}
+async function crear() {
+  const j = await api("POST", "/juego", {numero: $("secreto").value});
+  actual = j.id; refrescar();
+}
+async function unirse(id) {
+  await api("PUT", "/juego/" + id, {nombre: yo, numero: $("secreto").value});
+  actual = id; refrescar();
+}
+function abrir(id) { actual = id; refrescar(); }
+async function jugar() {
+  await api("POST", "/juego/" + actual + "/jugar", {numero: $("intento").value});
+  $("intento").value = ""; refrescar();
+}
+
+async function refrescar() {
+  if (!token) return;
+  const juegos = await api("GET", "/juego");
+  $("lista").innerHTML = juegos.map(j => `<li>#${esc(j.id)} · creado por ${esc(j.creador)} · ${esc(j.estado)}` +
+    (j.ganador ? ` · ganó ${esc(j.ganador)}` : "") +
+    (j.estado === "sin_completar" && !j.jugadores.includes(yo)
+      ? ` <button onclick="intentar(() => unirse('${j.id}'))">Unirse</button>` : "") +
+    (j.jugadores.includes(yo) ? ` <button onclick="abrir('${j.id}')">Abrir</button>` : "") + "</li>").join("");
+  if (!actual) return;
+  const j = await api("GET", "/juego/" + actual);
+  $("panel").hidden = false;
+  $("estado").innerHTML = `<b>Juego #${esc(j.id)}</b> (${esc(j.estado)}) — ${esc(j.jugadores.join(" vs "))}` +
+    (j.turno ? `<br>Turno de: <b>${esc(j.turno)}</b>` : "") +
+    (j.ganador ? `<br>Ganador: <b>${esc(j.ganador)}</b>` : "");
+  $("turnoBox").hidden = j.turno !== yo;
+  $("jugadas").innerHTML = j.jugadas.map(x =>
+    `<li>${esc(x.jugador)}: ${esc(x.numero)} → ${x.fijas} fijas, ${x.picas} picas</li>`).join("");
+}
+setInterval(() => refrescar().catch(() => {}), 2000);
+</script>
+</body>
+</html>

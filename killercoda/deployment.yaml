@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: picas-y-fijas
+  namespace: picas-y-fijas
+spec:
+  replicas: 1   # los juegos viven en memoria: una sola réplica
+  selector:
+    matchLabels:
+      app: picas-y-fijas
+  template:
+    metadata:
+      labels:
+        app: picas-y-fijas
+    spec:
+      initContainers:
+        - name: descargar-codigo
+          image: alpine/git:latest
+          args: ["clone", "--depth=1", "https://github.com/lmnovoag-uni/picas-y-fijas.git", "/codigo"]
+          volumeMounts:
+            - name: codigo
+              mountPath: /codigo
+      containers:
+        - name: web
+          image: python:3.12-slim
+          workingDir: /codigo
+          command: ["sh", "-c", "pip install --no-cache-dir -r requirements.txt && exec gunicorn -w 1 --threads 4 -b 0.0.0.0:5000 app:app"]
+          ports:
+            - name: http
+              containerPort: 5000
+          env:
+            - name: SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: picas-auth
+                  key: signing-key
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          volumeMounts:
+            - name: codigo
+              mountPath: /codigo
+      volumes:
+        - name: codigo
+          emptyDir: {}
