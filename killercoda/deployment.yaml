@@ -24,7 +24,7 @@ spec:
         - name: web
           image: python:3.12-slim
           workingDir: /codigo
-          command: ["sh", "-c", "pip install --no-cache-dir -r requirements.txt && exec gunicorn -w 1 --threads 4 -b 0.0.0.0:5000 app:app"]
+          command: ["sh", "-c", "pip install --no-cache-dir -r requirements.txt && exec gunicorn -w 1 --threads 4 --access-logfile - -b 0.0.0.0:5000 app:app"]
           ports:
             - name: http
               containerPort: 5000
